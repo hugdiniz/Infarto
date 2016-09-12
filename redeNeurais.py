@@ -8,6 +8,8 @@ from pybrain.utilities           import percentError
 from pybrain.tools.shortcuts     import buildNetwork
 from pybrain.supervised.trainers import BackpropTrainer
 from pybrain.structure.modules   import SoftmaxLayer
+from sklearn import preprocessing
+from sklearn.metrics import confusion_matrix
 
 def splitKFold(y,num_folds):
     
@@ -48,24 +50,37 @@ if __name__ == "__main__":
     
     treinoIndex = numpy.where(a % 10 != 1)[0]
     testeIndex =  numpy.where(a % 10 == 1)[0]
+    min_max_scaler = preprocessing.MinMaxScaler()
+    matrixProcessed = min_max_scaler.fit_transform(matrix[:,:3])
+    matrixProcessed = preprocessing.scale(matrixProcessed)
+    #print(confusion_matrix(matrixProcessed[:,1],matrixProcessed[:,2]))
+    #scores = np.zeros(k)
+    #x1Media = np.mean(matrix[:,0])
+    #x2Media = np.mean(matrix[:,1])
+    #x1STD = np.std(matrix[:,0])
+    #x2STD = np.std(matrix[:,1])
+    
     
     for n in treinoIndex:
-        trndata.addSample(matrix[n,:3], [matrix[n,3]])
+        trndata.addSample(matrixProcessed[n,:3], [matrix[n,3]])
     
     for n in testeIndex:
-        tstdata.addSample(matrix[n,:3], [matrix[n,3]])
+        tstdata.addSample(matrixProcessed[n,:3], [matrix[n,3]])
     
     fnn = buildNetwork(trndata.indim, 4, trndata.outdim, bias=True)
     
-    trainer = BackpropTrainer(fnn, trndata, learningrate=0.6, momentum=0.99)
-    trainer.trainUntilConvergence( verbose = True, maxEpochs = 1000)
+    trainer = BackpropTrainer(fnn, trndata, learningrate=0.1)
+    trainer.trainUntilConvergence( verbose = True, maxEpochs = 10)
     trainer.testOnData(tstdata, verbose=True)
-    
+    acerto = 0
     for n in testeIndex:
-        print("original: "+str(matrix[n,3]) + " estimado: "+str(fnn.activate(matrix[n,:3])))
+            resultadoInfartoN = fnn.activate(matrixProcessed[n,:3])
+            if resultadoInfartoN < 0:
+                acerto = acerto + int( matrix[n,3] == -1)
+            else:
+                acerto = acerto + int( matrix[n,3] == 1)
+    print("porcentagem acerto "+ str( (acerto *100 / len(testeIndex)) ))
     
-    p = fnn.activateOnDataset( tstdata )
-    a = numpy.asarray(p)
-    numpy.savetxt("foo.csv", a, delimiter=",")
+  
 
     
