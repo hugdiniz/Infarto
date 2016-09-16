@@ -39,8 +39,8 @@ if __name__ == "__main__":
     matrix = lerDataset()
     
     print(matrix[:,:3])
-    trndata = SupervisedDataSet(3,1)
-    tstdata = SupervisedDataSet(3,1)
+    trndata = ClassificationDataSet(3,nb_classes=2)
+    tstdata = ClassificationDataSet(3,nb_classes=2)
     
     lista = list(range(1,len(matrix)))
     shuffle(lista)

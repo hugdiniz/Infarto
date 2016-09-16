@@ -28,5 +28,5 @@ validacaoIndex = find(r -> r == 1, index)
 csvValidacao = vcat(titulo,csv[validacaoIndex,:])[:,1:4]
 csvTreinoTeste = vcat(titulo,csv[treinoTesteIndex,:])[:,1:4]
 
-writecsv("Banco de Dados - Infarto validacao.csv",csvValidacao)
-writecsv("Banco de Dados - Infarto treinoTeste.csv",csvTreinoTeste)
+writecsv("Banco de Dados - Infarto teste.csv",csvValidacao)
+writecsv("Banco de Dados - Infarto treino.csv",csvTreinoTeste)
