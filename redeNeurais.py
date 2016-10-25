@@ -1,71 +1,74 @@
-import numpy
 import math
 from random import shuffle
-from Dataset import lerDataset 
 from pybrain.structure import FeedForwardNetwork
-from pybrain.datasets            import SupervisedDataSet
+from pybrain.datasets            import SupervisedDataSet,ClassificationDataSet
 from pybrain.utilities           import percentError
 from pybrain.tools.shortcuts     import buildNetwork
 from pybrain.supervised.trainers import BackpropTrainer
 from pybrain.structure.modules   import SoftmaxLayer
+from sklearn import preprocessing
+import numpy as np
+import pickle
 
-def splitKFold(y,num_folds):
+class RedeNeural(object):
     
-    lista = list(range(1,786))
-    shuffle(lista)
-    fold_size = int(math.floor(y/num_folds))
-    remainder = y-num_folds*fold_size
-    groups = numpy.zeros(y)
-    cursor = 1
-    group = 1
+    def __init__(self, neuronios = 4):
+        self.neuronios = neuronios      
 
-    while(cursor<=y):
-        this_fold_size = 0
-        if(group <= remainder):
-            this_fold_size  = fold_size+1
+    def fit(self,trainMatrix, testMatrix):
+        
+        trainMatrix = np.array(trainMatrix)
+        limite = len(trainMatrix[0,:])
+        min_max_scaler = preprocessing.MinMaxScaler()
+        
+        if limite == 4:
+            feature4 = (np.zeros((1,len(trainMatrix))) + trainMatrix[:,3])
+            feature4 = feature4.T
+            matrixProcessed = np.concatenate((min_max_scaler.fit_transform(trainMatrix[:,:3]),feature4),axis=1)
         else:
-            this_fold_size = fold_size
-        for j in range(cursor,cursor+this_fold_size-1):
-            groups[j] = group
-        group += 1
-        cursor += this_fold_size
-  
+            matrixProcessed = min_max_scaler.fit_transform(trainMatrix)
+        
+        trainMatrix = np.array(trainMatrix)
+        testMatrix = np.array(testMatrix)
+        
 
-    return groups;
-  
+       
+        trndata = ClassificationDataSet(limite,nb_classes=2)
+                
+        self.fnn = buildNetwork(trndata.indim, self.neuronios, trndata.outdim)
+        
+        for n in range(0,len(matrixProcessed)):
+            trndata.addSample(matrixProcessed[n,:], [testMatrix[n]])       
+        
+        self.trainer = BackpropTrainer(self.fnn, trndata, learningrate=0.2)
+        self.trainer.trainUntilConvergence(maxEpochs = 20)
+    
+    def score(self,X, Y):
 
-
-if __name__ == "__main__":
-    matrix = lerDataset()
+        X = np.array(X)
+        Y = np.array(Y)
+        min_max_scaler = preprocessing.MinMaxScaler()
+        X = min_max_scaler.fit_transform(X)
+        acerto = 0 
+        for n in range(0,len(X)):    
+            predicao = self.fnn.activate(X[n,:])  
+            if predicao < 0:
+                acerto = acerto + int( Y[n] == -1)
+            else:
+                acerto = acerto + int( Y[n] == 1)
+            
+        
+        return acerto / len(X)
     
-    print(matrix[:,:3])
-    trndata = ClassificationDataSet(3,nb_classes=2)
-    tstdata = ClassificationDataSet(3,nb_classes=2)
-    
-    lista = list(range(1,len(matrix)))
-    shuffle(lista)
-    a = numpy.asarray(lista)
-    
-    treinoIndex = numpy.where(a % 10 != 1)[0]
-    testeIndex =  numpy.where(a % 10 == 1)[0]
-    
-    for n in treinoIndex:
-        trndata.addSample(matrix[n,:3], [matrix[n,3]])
-    
-    for n in testeIndex:
-        tstdata.addSample(matrix[n,:3], [matrix[n,3]])
-    
-    fnn = buildNetwork(trndata.indim, 4, trndata.outdim, bias=True)
-    
-    trainer = BackpropTrainer(fnn, trndata, learningrate=0.6, momentum=0.99)
-    trainer.trainUntilConvergence( verbose = True, maxEpochs = 1000)
-    trainer.testOnData(tstdata, verbose=True)
-    
-    for n in testeIndex:
-        print("original: "+str(matrix[n,3]) + " estimado: "+str(fnn.activate(matrix[n,:3])))
-    
-    p = fnn.activateOnDataset( tstdata )
-    a = numpy.asarray(p)
-    numpy.savetxt("foo.csv", a, delimiter=",")
-
-    
+    def predict(self,X):
+        X = np.array(X)
+        
+        min_max_scaler = preprocessing.MinMaxScaler()
+        X = min_max_scaler.fit_transform(X)
+        acerto = 0 
+        predicao = self.fnn.activate(X)  
+        if predicao < 0:
+            return 0
+        else:
+            return 1
+        
