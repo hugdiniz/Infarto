@@ -4,49 +4,55 @@ import numpy as np
 from openpyxl import load_workbook
 from sklearn.cluster import KMeans
 import pickle
+from sklearn import preprocessing
 
 def probabilidadeInfarto(matrixTrain,training=True):
     
     if training:
-        est = KMeans(n_clusters=4, n_init=1, init='random')
-        est.fit(matrixTrain[:,:3])
+        est = KMeans(n_clusters=8, n_init=1, init='random')
+        
         with open("kmeansPI.pkl",'wb') as f:
             pickle.dump(est,f)  
     else:
         est = pickle.load(open("kmeansPI.pkl",'rb'))
+
+
+    min_max_scaler = preprocessing.MinMaxScaler(feature_range=(-2, 2))
+    matrixProcessed = min_max_scaler.fit_transform(matrixTrain[:,:3])    
+    matrixProcessed = np.array([[matrixProcessed[y,0],np.tanh(matrixProcessed[y,1]),np.tanh(matrixProcessed[y,2])]  for y in range(0,len(matrixTrain[:,0]))])
     
+    est.fit(matrixProcessed[:,:3])
     W = matrixTrain[:,3]
-    T = np.array([ est.predict(matrixTrain[x,:3])[0] for x in range(0,len(matrixTrain))])
+    T = np.array([ est.predict(matrixProcessed[x,:3])[0] for x in range(0,len(matrixProcessed))])
         
     class1 = np.where(T == 0 )[0]
     class2 = np.where(T == 1 )[0]
     class3 = np.where(T == 2 )[0]
-    class4 = np.where(T == 3 )[0]  
-    
-    class1T = np.where(W[class1] == 1 )[0]
-    class2T = np.where(W[class2] == 1 )[0]
-    class3T = np.where(W[class3] == 1 )[0]
-    class4T = np.where(W[class4] == 1 )[0]    
-
-    p1 = float(len(class1T)) / float(len(class1T) + len(class2T) + len(class3T) + len(class4T))    
-    
-    p2 = float(len(class2T)) / float(len(class1T) + len(class2T) + len(class3T) + len(class4T))  
-    
-    p3 = float(len(class3T)) / float(len(class1T) + len(class2T) + len(class3T) + len(class4T))   
-    
-    p4 = float(len(class4T)) / float(len(class1T) + len(class2T) + len(class3T) + len(class4T))    
-       
-    matrixTrain = np.array([np.concatenate((matrixTrain[x,:3],[0],[matrixTrain[x,3]]),axis=0) for x in range(0,len(matrixTrain))])
+    class4 = np.where(T == 3 )[0]
+    class5 = np.where(T == 4 )[0]
+    class6 = np.where(T == 5 )[0]
+    class7 = np.where(T == 6 )[0]
+    class8 = np.where(T == 7 )[0]      
+          
+    matrixTrain = np.array([np.concatenate((matrixTrain[x,:3],[0,0,0,0,0,0,0,0],[matrixTrain[x,3]]),axis=0) for x in range(0,len(matrixTrain))])
     
     for x in range(0,len(matrixTrain)):        
         if x in class1:
-           matrixTrain[x,3] = p1            
+           matrixTrain[x,3] = 1            
         if x in class2:
-            matrixTrain[x,3] = p2            
+            matrixTrain[x,4] = 1            
         if x in class3:
-            matrixTrain[x,3] = p3            
+            matrixTrain[x,5] = 1            
         if x in class4:
-            matrixTrain[x,3] = p4            
+            matrixTrain[x,6] = 1
+        if x in class5:
+            matrixTrain[x,7] = 1
+        if x in class6:
+            matrixTrain[x,8] = 1
+        if x in class7:
+            matrixTrain[x,9] = 1
+        if x in class8:
+            matrixTrain[x,10] = 1            
     
     return matrixTrain
 
@@ -73,7 +79,7 @@ def lerCSV(path, fullPath = False,limitCellPerRow = 4,training=False):
 
 
 
-def lerXLSX(path, fullPath = False,sheetName="Hoja1",limitCellPerRow = 4,training=False):
+def lerXLSX(path, fullPath = False,sheetName="Hoja1",limitCellPerRow = 4,training=False,agrupamento = True):
     if(fullPath):
        datasets_root_path =  "" + path
     else:
@@ -97,7 +103,10 @@ def lerXLSX(path, fullPath = False,sheetName="Hoja1",limitCellPerRow = 4,trainin
         print("Erro ao recuperar planilha. Planilha de nome "+sheetName+" nao encontrada.")
         exit()
     
-    return probabilidadeInfarto(matrix,training)
+    if agrupamento:
+        return probabilidadeInfarto(matrix,training)
+    else:
+        return matrix
 
     
 if __name__ == "__main__":
